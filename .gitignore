@@ -5,3 +5,5 @@
 # Secrets
 **/*.env
 *.env
+# Local image cache
+images/*.tar

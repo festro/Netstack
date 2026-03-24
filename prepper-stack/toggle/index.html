@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netstack — Online Toggle</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #00ff88;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: 0.2em; margin-bottom: 0.5rem; color: #fff; }
+    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 3rem; letter-spacing: 0.1em; }
+    .status-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .status-label { font-size: 0.7rem; letter-spacing: 0.15em; color: #555; margin-bottom: 1rem; }
+    .status-badge {
+      display: inline-block;
+      padding: 0.4rem 1.2rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      margin-bottom: 2rem;
+    }
+    .badge-offline { background: #1a0000; color: #ff4444; border: 1px solid #ff444440; }
+    .badge-online  { background: #001a0a; color: #00ff88; border: 1px solid #00ff8840; }
+    .toggle-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 8px;
+      border: none;
+      font-family: inherit;
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-go-online  { background: #00ff88; color: #000; }
+    .btn-go-offline { background: #ff4444; color: #fff; }
+    .toggle-btn:hover { opacity: 0.85; transform: scale(0.99); }
+    .toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .log-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+    }
+    .log-title { font-size: 0.7rem; letter-spacing: 0.15em; color: #555; margin-bottom: 1rem; }
+    .log-entry {
+      font-size: 0.72rem;
+      color: #444;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      justify-content: space-between;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-online  { color: #00ff88; }
+    .log-offline { color: #ff4444; }
+    .log-empty { color: #333; font-size: 0.72rem; }
+  </style>
+</head>
+<body>
+  <h1>⬡ NETSTACK</h1>
+  <p class="subtitle">PREPPER STACK — EXPOSURE CONTROL</p>
+
+  <div class="status-card">
+    <div class="status-label">CURRENT MODE</div>
+    <div id="badge" class="status-badge badge-offline">● OFFLINE</div>
+    <button id="toggleBtn" class="toggle-btn btn-go-online" onclick="doToggle()">
+      ENABLE ONLINE MODE
+    </button>
+  </div>
+
+  <div class="log-card">
+    <div class="log-title">TOGGLE HISTORY</div>
+    <div id="log"><div class="log-empty">No activity yet.</div></div>
+  </div>
+
+  <script>
+    async function fetchStatus() {
+      const res = await fetch('/status');
+      const data = await res.json();
+      updateUI(data.onlineMode, data.log);
+    }
+
+    function updateUI(online, log) {
+      const badge = document.getElementById('badge');
+      const btn = document.getElementById('toggleBtn');
+
+      badge.textContent = online ? '● ONLINE' : '● OFFLINE';
+      badge.className = 'status-badge ' + (online ? 'badge-online' : 'badge-offline');
+      btn.textContent = online ? 'DISABLE ONLINE MODE' : 'ENABLE ONLINE MODE';
+      btn.className = 'toggle-btn ' + (online ? 'btn-go-offline' : 'btn-go-online');
+
+      const logEl = document.getElementById('log');
+      if (!log || log.length === 0) {
+        logEl.innerHTML = '<div class="log-empty">No activity yet.</div>';
+      } else {
+        logEl.innerHTML = log.map(e => `
+          <div class="log-entry">
+            <span class="${e.action === 'ONLINE' ? 'log-online' : 'log-offline'}">
+              ${e.action}
+            </span>
+            <span>${new Date(e.time).toLocaleString()}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function doToggle() {
+      const btn = document.getElementById('toggleBtn');
+      btn.disabled = true;
+      btn.textContent = 'WORKING...';
+      const res = await fetch('/toggle', { method: 'POST' });
+      const data = await res.json();
+      updateUI(data.onlineMode, null);
+      await fetchStatus();
+      btn.disabled = false;
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 10000);
+  </script>
+</body>
+</html>

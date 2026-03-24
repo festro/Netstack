@@ -1,0 +1,125 @@
+name: prepper-stack
+
+services:
+  nomad:
+    image: ghcr.io/crosstalk-solutions/project-nomad:latest
+    container_name: nomad_admin
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8080"
+    volumes:
+      - ./data/storage:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nomad-update-shared:/app/update-shared
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - LOG_LEVEL=info
+      - APP_KEY=${APP_KEY}
+      - HOST=0.0.0.0
+      - URL=${URL}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=nomad
+      - DB_USER=nomad_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=nomad
+      - DB_SSL=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DEFAULT_USER=${NOMAD_USER}
+      - DEFAULT_PASSWORD=${NOMAD_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - prepper_internal
+      - npm_proxy
+
+  dozzle:
+    image: amir20/dozzle:v10.0
+    container_name: nomad_dozzle
+    restart: unless-stopped
+    expose:
+      - "8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOZZLE_ENABLE_ACTIONS=true
+      - DOZZLE_ENABLE_SHELL=true
+    networks:
+      - prepper_internal
+      - npm_proxy
+
+  mysql:
+    image: mysql:8.0
+    container_name: nomad_mysql
+    restart: unless-stopped
+    expose:
+      - "3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=nomad
+      - MYSQL_USER=nomad_user
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - prepper_internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: nomad_redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - prepper_internal
+
+  toggle:
+    build:
+      context: ./toggle
+      dockerfile: Dockerfile
+    container_name: nomad_toggle
+    restart: unless-stopped
+    expose:
+      - "${TOGGLE_PORT}"
+    environment:
+      - NPM_API_URL=${NPM_API_URL}
+      - NPM_EMAIL=${NPM_EMAIL}
+      - NPM_PASSWORD=${NPM_PASSWORD}
+      - TOGGLE_PORT=${TOGGLE_PORT}
+    networks:
+      - prepper_internal
+      - npm_proxy
+
+volumes:
+  nomad-update-shared:
+    driver: local
+
+networks:
+  prepper_internal:
+    driver: bridge
+  npm_proxy:
+    external: true

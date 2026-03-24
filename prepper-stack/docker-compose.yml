@@ -103,8 +103,8 @@ services:
       dockerfile: Dockerfile
     container_name: nomad_toggle
     restart: unless-stopped
-    expose:
-      - "${TOGGLE_PORT}"
+    ports:
+      - "8090:8090"
     environment:
       - NPM_API_URL=${NPM_API_URL}
       - NPM_EMAIL=${NPM_EMAIL}

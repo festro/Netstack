@@ -7,11 +7,14 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    expose:
-      - "8080"
+    ports:
+      - "8080:8080"
     volumes:
       - ./data/storage:/app/storage
+      - /tmp/nomad-disk-info.json:/app/storage/nomad-disk-info.json
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
       - nomad-update-shared:/app/update-shared
     environment:
       - NODE_ENV=production
@@ -36,6 +39,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
@@ -49,8 +53,8 @@ services:
     image: amir20/dozzle:v10.0
     container_name: nomad_dozzle
     restart: unless-stopped
-    expose:
-      - "8080"
+    ports:
+      - "9999:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -104,7 +108,7 @@ services:
     container_name: nomad_toggle
     restart: unless-stopped
     ports:
-      - "8090:8090"
+      - "8095:8090"
     environment:
       - NPM_API_URL=${NPM_API_URL}
       - NPM_EMAIL=${NPM_EMAIL}

@@ -50,7 +50,7 @@ async function toggleOnlineMode(enable) {
   const results = [];
 
   for (const host of hosts) {
-    if (host.domain_names.some(d => d.includes('layonet.org'))) {
+    if (host.domain_names.some(d => d.includes('yourdomain.com'))) {
       await setHostEnabled(host.id, enable);
       results.push(host.domain_names[0]);
     }
